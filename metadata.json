@@ -1,0 +1,8 @@
+{
+  "name": "Remix Bid Exact - Pre-Con RFI \u0026 Estimating Hub",
+  "description": "Comprehensive enterprise ERP platform for Bid Exact LLC featuring cash inflow and outflow treasury, client management, employee HR directory, salary and payroll execution, debt and loan management, partner equity payouts, and emergency capital reserves.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

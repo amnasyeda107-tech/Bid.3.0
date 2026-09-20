@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      (function () {
+        try {
+          var originalFetch = window.fetch ? window.fetch.bind(window) : undefined;
+          var _currentFetch = originalFetch;
+          Object.defineProperty(window, 'fetch', {
+            get: function () {
+              return _currentFetch;
+            },
+            set: function (newFetch) {
+              _currentFetch = newFetch;
+            },
+            configurable: true,
+            enumerable: true,
+          });
+        } catch (e) {
+          try {
+            var protoDesc = Object.getOwnPropertyDescriptor(Window.prototype, 'fetch');
+            if (protoDesc && !protoDesc.set) {
+              var origProto = Window.prototype.fetch;
+              var _protoFetch = origProto;
+              Object.defineProperty(Window.prototype, 'fetch', {
+                get: function () {
+                  return _protoFetch;
+                },
+                set: function (val) {
+                  _protoFetch = val;
+                },
+                configurable: true,
+                enumerable: true,
+              });
+            }
+          } catch (e2) {}
+        }
+      })();
+    </script>
+    <title>Bid Exact - Pre-Con RFI & Estimating Hub</title>
+    <meta name="description" content="Comprehensive enterprise ERP platform for Bid Exact LLC featuring cash inflow and outflow treasury, client management, employee HR directory, salary and payroll execution, debt and loan management, partner equity payouts, and emergency capital reserves." />
+    <meta property="og:title" content="Bid Exact - Pre-Con RFI & Estimating Hub" />
+    <meta property="og:description" content="Comprehensive enterprise ERP platform for Bid Exact LLC featuring cash inflow and outflow treasury, client management, employee HR directory, salary and payroll execution, debt and loan management, partner equity payouts, and emergency capital reserves." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="bg-[#0b1326] text-[#dae2fd] antialiased selection:bg-[#4edea3]/30 selection:text-[#4edea3]">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
