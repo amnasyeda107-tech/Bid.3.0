@@ -16,6 +16,7 @@ import { EnterpriseClientsGrid } from './components/EnterpriseClientsGrid';
 import { AccuracyGuaranteeStrip } from './components/AccuracyGuaranteeStrip';
 import { PersonalFinanceHub } from './components/finance/PersonalFinanceHub';
 import { ProjectTrackingOperations } from './components/ProjectTrackingOperations';
+import { WorkflowAutomationHub } from './components/workflow/WorkflowAutomationHub';
 
 // Dedicated Module Views
 import { OperationsOverviewView } from './components/views/OperationsOverviewView';
@@ -37,6 +38,7 @@ import { DocumentsContractsView } from './components/views/DocumentsContractsVie
 import { CapTableView } from './components/views/CapTableView';
 import { AuditSettingsView } from './components/views/AuditSettingsView';
 import { CompanyDetailView } from './components/views/CompanyDetailView';
+import { ClientPortalView } from './components/views/ClientPortalView';
 
 // Enterprise ERP Initial System Data
 import {
@@ -80,7 +82,7 @@ export default function App() {
   });
 
   // State
-  const [activeTab, setActiveTab] = useState<NavTabId>('projects');
+  const [activeTab, setActiveTab] = useState<NavTabId>('workflow-automation');
   const [selectedPeriod, setSelectedPeriod] = useState('Q3 2024 (Active Period)');
   const [metrics, setMetrics] = useState<MetricSummary>(INITIAL_METRICS);
   const [rfis, setRfis] = useState<RfiItem[]>(INITIAL_RFIS);
@@ -365,6 +367,17 @@ export default function App() {
               onSelectRfi={(rfi) => setSelectedRfi(rfi)}
               onSelectBid={(bid) => setSelectedBid(bid)}
             />
+          ) : activeTab === 'workflow-automation' ? (
+            <WorkflowAutomationHub />
+          ) : activeTab === 'client-portal' ? (
+            <ClientPortalView
+              rfis={rfis}
+              bids={bids}
+              clients={clients}
+              onUpdateRfiStatus={handleUpdateRfiStatus}
+              onCreateRfi={handleCreateRfi}
+              onExitPortal={() => handleSelectTab('overview')}
+            />
           ) : activeTab === 'overview' ? (
             <OperationsOverviewView
               onNavigateTab={handleSelectTab}
@@ -407,8 +420,12 @@ export default function App() {
             <LoanManagementView
               loans={loans}
               payments={loanPayments}
+              employees={employees}
               onRecordPayment={handleRecordLoanPayment}
               onAddLoan={handleAddLoan}
+              onUpdateLoan={(updatedLoan) => {
+                setLoans((prev) => prev.map((l) => (l.id === updatedLoan.id ? updatedLoan : l)));
+              }}
             />
           ) : activeTab === 'partners' ? (
             <PartnerManagementView

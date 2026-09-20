@@ -733,7 +733,12 @@ export const ResourceCapacityPlanningModule: React.FC<ResourceCapacityPlanningMo
                 : 'bg-[#adc6ff]';
 
               // Estimator's project allocations
-              const allocations =
+              const allocations: Array<{
+                projectId: string;
+                projectTitle: string;
+                hoursPerWeek: number;
+                roleOnProject?: string;
+              }> =
                 est.projectAllocations && est.projectAllocations.length > 0
                   ? est.projectAllocations
                   : est.activeAssignments.map((title) => {

@@ -22,11 +22,15 @@ import {
   CreditCard,
   PiggyBank,
   ShieldAlert,
-  UserCheck
+  UserCheck,
+  Zap,
+  Workflow
 } from 'lucide-react';
 
 export type NavTabId =
   | 'overview'
+  | 'workflow-automation'
+  | 'client-portal'
   | 'inflow-outflow'
   | 'finance'
   | 'projects'
@@ -152,6 +156,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <LayoutDashboard className={`w-3.5 h-3.5 ${activeTab === 'overview' ? 'text-[#4edea3]' : 'text-[#86948a]'}`} />
                 <span>Overview / Operations</span>
               </div>
+            </button>
+
+            <button
+              id="nav-workflow-automation"
+              onClick={() => handleNav('workflow-automation')}
+              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded text-xs transition-colors cursor-pointer ${
+                activeTab === 'workflow-automation'
+                  ? 'bg-[#171f33] text-white font-medium border-l-2 border-[#4edea3]'
+                  : 'text-[#bbcabf] hover:bg-[#131b2e] hover:text-[#dae2fd]'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <Zap className={`w-3.5 h-3.5 ${activeTab === 'workflow-automation' ? 'text-[#4edea3]' : 'text-[#86948a]'}`} />
+                <span className="font-semibold">Workflow Automation</span>
+              </div>
+              <span className="font-mono text-[9px] px-1.5 py-0.5 bg-[#4edea3]/20 text-[#4edea3] rounded font-bold border border-[#4edea3]/30">
+                E2E AUTO
+              </span>
             </button>
 
             <button
@@ -367,6 +389,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
             Client & Sales
           </div>
           <div className="space-y-0.5">
+            <button
+              id="nav-client-portal"
+              onClick={() => handleNav('client-portal')}
+              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded text-xs transition-colors cursor-pointer ${
+                activeTab === 'client-portal'
+                  ? 'bg-[#171f33] text-white font-medium border-l-2 border-[#38bdf8]'
+                  : 'text-[#bbcabf] hover:bg-[#131b2e] hover:text-[#dae2fd]'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <ShieldCheck className={`w-3.5 h-3.5 ${activeTab === 'client-portal' ? 'text-[#38bdf8]' : 'text-[#86948a]'}`} />
+                <span>Client Portal (External)</span>
+              </div>
+              <span className="font-mono text-[9px] px-1.5 py-0.5 bg-[#38bdf8]/20 text-[#38bdf8] rounded font-bold border border-[#38bdf8]/30">
+                GATEWAY
+              </span>
+            </button>
+
             <button
               id="nav-clients"
               onClick={() => handleNav('clients')}

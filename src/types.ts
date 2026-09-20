@@ -188,21 +188,47 @@ export interface PayrollRunItem {
   status: 'Paid' | 'Processing' | 'Scheduled';
 }
 
+export type LoanDirection = 'company_loaned_out' | 'company_borrowed';
+
 export interface LoanItem {
   id: string;
   name: string;
-  lender: string;
-  type: 'Line of Credit' | 'SBA 7(a) Term' | 'Equipment Lease' | 'Founder Bridge' | 'Working Capital';
+  lender: string; // Institution/Lender or "Bid Exact LLC" when loaned out
+  type: 'Employee Loan' | 'Partner Advance' | 'Emergency Hardship' | 'Tool & Equipment Advance' | 'Line of Credit' | 'SBA 7(a) Term' | 'Equipment Lease' | 'Founder Bridge' | 'Working Capital';
   principalAmount: number;
   currentBalance: number;
-  interestRate: number; // in percentage, e.g. 6.5
-  monthlyPayment: number;
+  interestRate: number; // in percentage, e.g. 0% or 3.5%
+  monthlyPayment: number; // monthly deduction / EMI
   originationDate: string;
   maturityDate: string;
   nextPaymentDue: string;
-  autoPay: boolean;
-  status: 'Active' | 'Paid Off';
+  autoPay: boolean; // e.g. Payroll Auto-Deduction
+  status: 'Active' | 'Paid Off' | 'Pending Approval' | 'Rejected';
   notes?: string;
+  
+  // Person/People who take the loan from the company
+  direction?: LoanDirection; // 'company_loaned_out' (default for company-issued loans) or 'company_borrowed'
+  borrowerName?: string; // e.g. "Liam Scott", "Elena Rostova", "Syed Ahmed"
+  borrowerRole?: string; // e.g. "Junior MEP Quantity Surveyor"
+  borrowerEmail?: string;
+  borrowerId?: string; // EMP-106, etc.
+  repaymentMethod?: 'Payroll Deduction' | 'Direct Bank ACH' | 'Auto-Debit' | 'Check';
+  
+  // Approval metadata
+  approvedBy?: string; // e.g. "Umer Khayam (CEO & Founder)" or "Sarah Jenkins (Financial Controller)"
+  approvedDate?: string;
+  approvalStatus?: 'Approved' | 'Pending Approval' | 'Under Review' | 'Declined';
+  digitalSignature?: string; // e.g. "s/ Umer Khayam" or Drawn signature data URL
+  digitalSignatureTimestamp?: string;
+  approvalNotes?: string;
+  denialReason?: string;
+  disbursementAccount?: string; // e.g. "Chase Operating ••8491"
+  purpose?: string; // e.g. "Family Relocation & Housing Deposit", "Professional PE License & Continuing Ed"
+  
+  // Automated Overdue Notification Tracking
+  lastOverdueAlertSent?: string; // ISO date of last notification
+  overdueAlertDismissed?: boolean;
+  daysOverdue?: number;
 }
 
 export interface LoanPaymentRecord {
