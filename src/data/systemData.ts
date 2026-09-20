@@ -390,6 +390,12 @@ export const INITIAL_PAYROLL_RUNS: PayrollRunItem[] = [
   },
 ];
 
+const getRelativeDateStr = (offsetDays: number): string => {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  return d.toISOString().slice(0, 10);
+};
+
 export const INITIAL_LOANS: LoanItem[] = [
   // Loans issued BY the company TO employees / personnel
   {
@@ -465,7 +471,7 @@ export const INITIAL_LOANS: LoanItem[] = [
     monthlyPayment: 400, // $400/mo
     originationDate: '2024-05-10',
     maturityDate: '2025-07-10',
-    nextPaymentDue: '2024-09-17', // Exactly 3 days overdue relative to current operating date (Sep 20, 2024)
+    nextPaymentDue: getRelativeDateStr(-3), // Exactly 3 days overdue relative to current operating date
     autoPay: false, // Turned off due to payroll account change, causing overdue status
     repaymentMethod: 'Payroll Deduction',
     approvedBy: 'Umer Khayam (CEO & Founder)',

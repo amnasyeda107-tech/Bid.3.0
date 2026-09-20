@@ -54,6 +54,7 @@ interface SidebarProps {
   activeTab: NavTabId;
   onSelectTab: (tab: NavTabId) => void;
   openRfiCount: number;
+  overdueLoanCount?: number;
   onSwitchWorkspace?: (ws: 'personal-finance' | 'pre-con-estimating') => void;
   isMobileOpen?: boolean;
   onCloseMobile?: () => void;
@@ -63,6 +64,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
   onSelectTab,
   openRfiCount,
+  overdueLoanCount = 0,
   onSwitchWorkspace,
   isMobileOpen = false,
   onCloseMobile,
@@ -325,9 +327,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <CreditCard className={`w-3.5 h-3.5 ${activeTab === 'loans' ? 'text-[#4edea3]' : 'text-[#86948a]'}`} />
                 <span>Loan Management</span>
               </div>
-              <span className="font-mono text-[10px] px-1.5 py-0.5 bg-[#2d3449] text-[#dae2fd] rounded">
-                2
-              </span>
+              <div className="flex items-center gap-1.5">
+                {overdueLoanCount > 0 && (
+                  <span className="font-mono text-[9px] font-bold px-1.5 py-0.2 bg-[#ffb4ab]/20 text-[#ffb4ab] border border-[#ffb4ab]/40 rounded-full flex items-center gap-1 animate-pulse">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#ffb4ab]" />
+                    {overdueLoanCount} overdue
+                  </span>
+                )}
+                <span className="font-mono text-[10px] px-1.5 py-0.5 bg-[#2d3449] text-[#dae2fd] rounded">
+                  2
+                </span>
+              </div>
             </button>
 
             <button

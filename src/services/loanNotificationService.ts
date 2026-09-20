@@ -5,6 +5,7 @@ export interface OverdueLoanAlert {
   loanName: string;
   borrowerName: string;
   borrowerEmail: string;
+  borrowerRole?: string;
   monthlyPayment: number;
   currentBalance: number;
   nextPaymentDue: string;
@@ -21,12 +22,14 @@ export interface NotificationLogItem {
   loanName: string;
   borrowerName: string;
   borrowerEmail: string;
-  recipientEmail: string; // e.g. bidxact@gmail.com
+  recipientEmail: string; // e.g. bidxact@gmail.com or amnasyeda107@gmail.com
   daysOverdue: number;
   amountDue: number;
   channels: ('browser_desktop' | 'email_smtp' | 'in_app')[];
   status: 'delivered' | 'simulated_email_dispatched' | 'desktop_displayed';
   summary: string;
+  emailSubject?: string;
+  emailBodyHtml?: string;
 }
 
 export interface LoanNotificationSettings {
@@ -40,8 +43,9 @@ export interface LoanNotificationSettings {
   lastCheckedAt?: string;
 }
 
-const SETTINGS_KEY = 'bid_exact_loan_notification_settings_v1';
-const LOGS_KEY = 'bid_exact_loan_notification_logs_v1';
+const SETTINGS_KEY = 'bid_exact_loan_notification_settings_v2';
+const LOGS_KEY = 'bid_exact_loan_notification_logs_v2';
+const DISMISSED_ALERTS_KEY = 'bid_exact_loan_dismissed_alerts_v2';
 
 export const DEFAULT_LOAN_NOTIFICATION_SETTINGS: LoanNotificationSettings = {
   autoCheckEnabled: true,
@@ -49,11 +53,35 @@ export const DEFAULT_LOAN_NOTIFICATION_SETTINGS: LoanNotificationSettings = {
   adminAlertEmail: 'bidxact@gmail.com',
   enableDesktopNotifications: true,
   enableEmailAlerts: true,
-  checkIntervalMinutes: 5,
+  checkIntervalMinutes: 1, // Quick checks to keep real-time
   soundEnabled: true,
 };
 
+type NotificationSubscriber = (alert: OverdueLoanAlert, logItem: NotificationLogItem) => void;
+
 export class LoanNotificationService {
+  private static subscribers: Set<NotificationSubscriber> = new Set();
+
+  /**
+   * Subscribe to real-time automated alert events
+   */
+  public static subscribe(callback: NotificationSubscriber): () => void {
+    this.subscribers.add(callback);
+    return () => {
+      this.subscribers.delete(callback);
+    };
+  }
+
+  private static notifySubscribers(alert: OverdueLoanAlert, logItem: NotificationLogItem): void {
+    this.subscribers.forEach((cb) => {
+      try {
+        cb(alert, logItem);
+      } catch (err) {
+        console.error('Subscriber error in LoanNotificationService', err);
+      }
+    });
+  }
+
   /**
    * Load user settings from localStorage or defaults
    */
@@ -81,14 +109,14 @@ export class LoanNotificationService {
   }
 
   /**
-   * Check Web Notification API support
+   * Check Web Notification API support in the browser
    */
   public static isDesktopNotificationSupported(): boolean {
     return typeof window !== 'undefined' && 'Notification' in window;
   }
 
   /**
-   * Get current browser notification permission
+   * Get current browser notification permission state
    */
   public static getPermissionState(): NotificationPermission {
     if (!this.isDesktopNotificationSupported()) return 'denied';
@@ -96,7 +124,7 @@ export class LoanNotificationService {
   }
 
   /**
-   * Request browser desktop notification permission
+   * Request browser desktop notification permission from user
    */
   public static async requestPermission(): Promise<NotificationPermission> {
     if (!this.isDesktopNotificationSupported()) {
@@ -123,8 +151,8 @@ export class LoanNotificationService {
     if (isNaN(due.getTime())) return 0;
 
     // Normalize both dates to midnight UTC to compare full calendar days
-    const dueTime = Date.UTC(due.getFullYear(), due.getMonth(), due.getDate());
-    const refTime = Date.UTC(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
+    const dueTime = Date.UTC(due.getUTCFullYear(), due.getUTCMonth(), due.getUTCDate());
+    const refTime = Date.UTC(referenceDate.getUTCFullYear(), referenceDate.getUTCMonth(), referenceDate.getUTCDate());
 
     const diffMs = refTime - dueTime;
     return Math.floor(diffMs / (1000 * 60 * 60 * 24));
@@ -146,13 +174,14 @@ export class LoanNotificationService {
 
       const daysOverdue = this.calculateDaysOverdue(loan.nextPaymentDue, referenceDate);
 
-      // Trigger condition: payment is at least `thresholdDays` overdue
+      // Trigger condition: payment is at least `thresholdDays` overdue (e.g. 3 days)
       if (daysOverdue >= thresholdDays) {
         overdueList.push({
           loanId: loan.id,
           loanName: loan.name,
           borrowerName: loan.borrowerName || loan.name,
           borrowerEmail: loan.borrowerEmail || 'estimating@bidexact.com',
+          borrowerRole: loan.borrowerRole,
           monthlyPayment: loan.monthlyPayment,
           currentBalance: loan.currentBalance,
           nextPaymentDue: loan.nextPaymentDue,
@@ -182,7 +211,7 @@ export class LoanNotificationService {
         body,
         icon: '/favicon.ico',
         tag: `loan-overdue-${alert.loanId}-${alert.daysOverdue}`,
-        requireInteraction: true, // Keep on screen until acknowledged
+        requireInteraction: true, // Persist on desktop until user interacts
       });
 
       notification.onclick = () => {
@@ -192,27 +221,30 @@ export class LoanNotificationService {
 
       return true;
     } catch (e) {
-      console.error('Error firing desktop notification:', e);
+      console.warn('Native desktop notification could not be shown:', e);
       return false;
     }
   }
 
   /**
-   * Play subtle audio chime for alert if enabled
+   * Play subtle, high-clarity alert chime
    */
   public static playAlertSound(): void {
     try {
-      if (typeof window === 'undefined' || !window.AudioContext) return;
-      const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+      if (typeof window === 'undefined') return;
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return;
+
+      const ctx = new AudioCtx();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
 
       osc.type = 'sine';
-      // Pleasant alert chime: 587Hz (D5) -> 880Hz (A5)
+      // Harmonic alert: 587Hz (D5) -> 880Hz (A5)
       osc.frequency.setValueAtTime(587.33, ctx.currentTime);
       osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
 
-      gain.gain.setValueAtTime(0.12, ctx.currentTime);
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
 
       osc.connect(gain);
@@ -220,16 +252,98 @@ export class LoanNotificationService {
 
       osc.start();
       osc.stop(ctx.currentTime + 0.35);
-    } catch (err) {
-      // Audio playback might be restricted by browser policy
+    } catch {
+      // Audio playback might be muted or restricted by browser policy
     }
+  }
+
+  /**
+   * Formats a professional, enterprise-grade HTML email alert
+   */
+  public static generateEmailAlertContent(alert: OverdueLoanAlert, recipientEmail: string): {
+    subject: string;
+    bodyHtml: string;
+    bodyText: string;
+  } {
+    const subject = `🚨 URGENT: Loan Payment ${alert.daysOverdue} Days Overdue - ${alert.borrowerName} ($${alert.monthlyPayment.toLocaleString()})`;
+    
+    const bodyText = `
+BID EXACT FINANCIAL TREASURY - OVERDUE REPAYMENT NOTICE
+---------------------------------------------------------
+Alert: Monthly Loan Repayment Overdue by ${alert.daysOverdue} Days.
+Borrower: ${alert.borrowerName} (${alert.borrowerEmail})
+Loan Agreement: ${alert.loanName} [ID: ${alert.loanId}]
+Scheduled Due Date: ${alert.nextPaymentDue}
+Amount Overdue: $${alert.monthlyPayment.toLocaleString()}
+Remaining Loan Balance: $${alert.currentBalance.toLocaleString()}
+Designated Channel: ${alert.repaymentMethod}
+
+This automated notice was triggered because the payment has exceeded the 3-day overdue threshold.
+A desktop notification has also been dispatched to the admin dashboard.
+
+Recipient: ${recipientEmail}
+Generated: ${new Date().toLocaleString()}
+    `.trim();
+
+    const bodyHtml = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background: #0b1326; color: #dae2fd; border-radius: 8px; border: 1px solid #222a3d; overflow: hidden;">
+        <div style="background: #171f33; padding: 18px 24px; border-bottom: 1px solid #222a3d; display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <h2 style="margin: 0; font-size: 16px; color: #ffffff; letter-spacing: 0.5px;">BID EXACT FINANCIAL TREASURY</h2>
+            <p style="margin: 3px 0 0; font-size: 11px; color: #86948a; font-family: monospace;">AUTOMATED REPAYMENT MONITORING SERVICE</p>
+          </div>
+          <span style="background: #ffb4ab; color: #410002; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: bold; font-family: monospace;">${alert.daysOverdue} DAYS OVERDUE</span>
+        </div>
+        <div style="padding: 24px;">
+          <p style="margin-top: 0; font-size: 14px; color: #ffb4ab; font-weight: 600;">
+            ⚠️ Notice of Delinquent Payment: Threshold Exceeded
+          </p>
+          <p style="font-size: 13px; line-height: 1.5; color: #dae2fd;">
+            The monthly scheduled loan repayment for <strong>${alert.borrowerName}</strong> is now <strong>${alert.daysOverdue} days overdue</strong>. Payment was scheduled for <strong>${alert.nextPaymentDue}</strong> and has not yet been reconciled.
+          </p>
+          <div style="background: #131b2e; border: 1px solid #222a3d; border-radius: 6px; padding: 16px; margin: 20px 0;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 12px; font-family: monospace;">
+              <tr>
+                <td style="padding: 6px 0; color: #86948a;">Borrower:</td>
+                <td style="padding: 6px 0; color: #ffffff; text-align: right; font-weight: bold;">${alert.borrowerName}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #86948a;">Loan Facility:</td>
+                <td style="padding: 6px 0; color: #38bdf8; text-align: right;">${alert.loanName}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #86948a;">Monthly Due Amount:</td>
+                <td style="padding: 6px 0; color: #ffb4ab; text-align: right; font-weight: bold; font-size: 14px;">$${alert.monthlyPayment.toLocaleString()}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #86948a;">Outstanding Balance:</td>
+                <td style="padding: 6px 0; color: #ffffff; text-align: right;">$${alert.currentBalance.toLocaleString()}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #86948a;">Repayment Method:</td>
+                <td style="padding: 6px 0; color: #4edea3; text-align: right;">${alert.repaymentMethod}</td>
+              </tr>
+            </table>
+          </div>
+          <p style="font-size: 12px; color: #86948a; margin-bottom: 0;">
+            A browser desktop notification was dispatched simultaneously so financial controllers do not need to monitor email inboxes continuously.
+          </p>
+        </div>
+        <div style="background: #080d1a; padding: 12px 24px; border-top: 1px solid #222a3d; font-size: 11px; color: #86948a; text-align: center;">
+          Dispatched to: <strong>${recipientEmail}</strong> &bull; Bid Exact Internal Financial Controller Daemon
+        </div>
+      </div>
+    `;
+
+    return { subject, bodyHtml, bodyText };
   }
 
   /**
    * Dispatches automated alerts for overdue loans:
    * 1. Fires browser Desktop Notification (if granted)
-   * 2. Simulates instant email dispatch to bidxact@gmail.com and the borrower
-   * 3. Logs the notification event to the audit trail
+   * 2. Simulates instant email dispatch to adminAlertEmail and the borrower
+   * 3. Fires in-app notification callbacks for desktop toast
+   * 4. Logs the notification event to the audit trail
    */
   public static runAutomatedAlertCheck(
     loans: LoanItem[],
@@ -258,7 +372,7 @@ export class LoanNotificationService {
     for (const alert of overdueAlerts) {
       let desktopDelivered = false;
 
-      // 1. Trigger desktop notification if permitted and enabled
+      // 1. Trigger desktop notification if enabled
       if (settings.enableDesktopNotifications) {
         desktopDelivered = this.triggerDesktopNotification(alert);
       }
@@ -268,7 +382,10 @@ export class LoanNotificationService {
         this.playAlertSound();
       }
 
-      // 3. Build audit log item for email & desktop delivery
+      // 3. Generate email alert content
+      const { subject, bodyHtml } = this.generateEmailAlertContent(alert, settings.adminAlertEmail);
+
+      // 4. Build audit log item for email & desktop delivery
       const logItem: NotificationLogItem = {
         id: `NOTIF-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
         timestamp: nowStr,
@@ -285,10 +402,15 @@ export class LoanNotificationService {
           'in_app',
         ],
         status: desktopDelivered ? 'desktop_displayed' : 'simulated_email_dispatched',
-        summary: `Automated alert triggered: ${alert.daysOverdue} days overdue. Monthly payment $${alert.monthlyPayment.toLocaleString()} overdue since ${alert.nextPaymentDue}. Email sent to ${settings.adminAlertEmail} & ${alert.borrowerEmail}.`,
+        summary: `Automated alert: ${alert.daysOverdue} days overdue. Monthly payment $${alert.monthlyPayment.toLocaleString()} overdue since ${alert.nextPaymentDue}. Email sent to ${settings.adminAlertEmail} & ${alert.borrowerEmail}.`,
+        emailSubject: subject,
+        emailBodyHtml: bodyHtml,
       };
 
       newLogs.push(logItem);
+
+      // Notify active UI subscribers (for in-app desktop toast)
+      this.notifySubscribers(alert, logItem);
     }
 
     // Persist logs
@@ -320,7 +442,7 @@ export class LoanNotificationService {
     return [
       {
         id: 'NOTIF-INIT-01',
-        timestamp: '2024-09-19T09:00:00.000Z',
+        timestamp: new Date(Date.now() - 3600000).toISOString(),
         loanId: 'LOAN-EMP-03',
         loanName: 'Syed Ahmed - Family Emergency Hardship Advance',
         borrowerName: 'Syed Ahmed',
@@ -331,6 +453,7 @@ export class LoanNotificationService {
         channels: ['browser_desktop', 'email_smtp', 'in_app'],
         status: 'desktop_displayed',
         summary: 'Automated 3-day overdue payment alert dispatched to desktop notification and email server.',
+        emailSubject: '🚨 URGENT: Loan Payment 3 Days Overdue - Syed Ahmed ($400)',
       },
     ];
   }

@@ -73,6 +73,7 @@ import { ClientDetailModal } from './components/ClientDetailModal';
 import { ExportPdfModal } from './components/ExportPdfModal';
 import { AuditLogModal } from './components/AuditLogModal';
 import { CommandPaletteModal } from './components/CommandPaletteModal';
+import { LoanNotificationService } from './services/loanNotificationService';
 
 export default function App() {
   // Workspace state: defaults to pre-con-estimating (Enterprise Operations)
@@ -321,6 +322,9 @@ export default function App() {
     );
   }
 
+  // Automated loan alert monitoring
+  const overdueLoanCount = LoanNotificationService.evaluateOverdueLoans(loans, 3).length;
+
   return (
     <div className="min-h-screen bg-[#0b1326] text-[#dae2fd] flex flex-col antialiased selection:bg-[#4edea3]/25 selection:text-[#4edea3]">
       {/* Top Application Bar */}
@@ -342,6 +346,7 @@ export default function App() {
           activeTab={activeTab}
           onSelectTab={handleSelectTab}
           openRfiCount={metrics.openRfiCount}
+          overdueLoanCount={overdueLoanCount}
           onSwitchWorkspace={(ws) => {
             setActiveWorkspace(ws);
             localStorage.setItem('bid_exact_active_workspace', ws);
@@ -456,7 +461,7 @@ export default function App() {
               onOpenNewBid={() => setIsNewBidOpen(true)}
             />
           ) : activeTab === 'invoices' ? (
-            <InvoicesArView />
+            <InvoicesArView onRecordPaymentInflow={handleCreateTransaction} />
           ) : activeTab === 'messages' ? (
             <MessagesChannelsView />
           ) : activeTab === 'documents' ? (

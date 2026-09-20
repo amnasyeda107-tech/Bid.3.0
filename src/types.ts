@@ -241,6 +241,202 @@ export interface LoanPaymentRecord {
   interestPaid: number;
   remainingBalance: number;
   method: string;
+  receiptNumber?: string;
+  transactionId?: string;
+  borrowerName?: string;
+}
+
+export interface LoanPaymentReceiptData {
+  receiptNumber: string;
+  paymentId: string;
+  transactionId: string;
+  paymentDate: string;
+  timestamp: string;
+  loanId: string;
+  loanName: string;
+  loanType?: string;
+  direction?: LoanDirection;
+  borrowerName: string;
+  borrowerRole?: string;
+  borrowerEmail?: string;
+  borrowerId?: string;
+  lender: string;
+  amount: number;
+  principalPaid: number;
+  interestPaid: number;
+  previousBalance: number;
+  remainingBalance: number;
+  paymentMethod: string;
+  disbursementAccount: string;
+  reconciledStatus: string;
+  notes?: string;
+  authorizedOfficer: string;
+}
+
+// ==========================================
+// FINANCIAL RULES ENGINE TYPES
+// ==========================================
+
+export interface SalesCommissionRuleConfig {
+  newClientRatePercent: number; // e.g. 5.0%
+  recurringClientRatePercent: number; // e.g. 2.5%
+  deductStripeFees: boolean; // default true (sales commission based on net collected after Stripe fee)
+  defaultPaymentMethod: 'credit_card' | 'ach_debit' | 'wire_transfer';
+  clawbackWindowDays: number; // e.g. 90
+}
+
+export interface TeamMemberShare {
+  employeeId: string;
+  employeeName: string;
+  role: string;
+  department?: string;
+}
+
+export interface TeamTargetRule {
+  id: string; // 'team_a' | 'team_b' | 'team_c' | custom
+  name: string; // e.g. "Team A (Commercial & Institutional)"
+  department: string;
+  targetAmount: number; // Target in dollars, e.g. $250,000
+  currentAchievedAmount: number; // Current progress in dollars, e.g. $268,500
+  bonusPoolAmount: number; // Bonus pool in dollars, e.g. $5,000
+  splitType: 'equal_split' | 'hours_weighted';
+  members: TeamMemberShare[];
+  notes?: string;
+}
+
+export interface ServiceEarlySubmissionRule {
+  rewardMode: 'flat_dollar' | 'percentage'; // '$' flat dollar or '%' percentage of project
+  tier24h: number; // e.g. $500 or 1.5%
+  tier48h: number; // e.g. $1,000 or 2.5%
+  tier72h: number; // e.g. $1,500 or 4.0%
+  requireZeroQaErrors: boolean; // QA zero-defect floor
+  percentageBasis: 'contract_value' | 'gross_margin';
+}
+
+export interface FinancialRulesAdjustmentConfig {
+  salesCommission: SalesCommissionRuleConfig;
+  teams: TeamTargetRule[];
+  serviceEarlyDelivery: ServiceEarlySubmissionRule;
+  lastUpdated: string;
+  updatedBy: string;
+}
+
+export interface SalesCommissionCalculationResult {
+  clientType: 'new_client' | 'recurring_client';
+  contractValue: number;
+  paymentMethod: 'credit_card' | 'ach_debit' | 'wire_transfer';
+  stripeFeeDeduction: number;
+  netCollectedCash: number;
+  commissionRatePercent: number;
+  commissionAmount: number;
+  clawbackWindowDays: number;
+  notes: string;
+}
+
+export interface TeamMemberPayout {
+  employeeId: string;
+  employeeName: string;
+  role: string;
+  sharePercent: number;
+  payoutAmount: number;
+}
+
+export interface TeamTargetCalculationResult {
+  teamId: string;
+  teamName: string;
+  department: string;
+  targetAmount: number;
+  currentAchievedAmount: number;
+  isTargetMet: boolean;
+  achievementPercent: number;
+  shortfallOrSurplus: number;
+  bonusPoolUnlocked: number;
+  perMemberEqualShare: number;
+  memberPayouts: TeamMemberPayout[];
+  splitType: 'equal_split' | 'hours_weighted';
+}
+
+export interface ServiceEarlyBonusCalculationResult {
+  leadTimeHoursAhead: number;
+  addendaErrors: number;
+  isEligible: boolean;
+  rewardMode: 'flat_dollar' | 'percentage';
+  appliedTier: 'none' | '24h' | '48h' | '72h';
+  tierRateOrAmount: number;
+  basisAmount: number;
+  grossBonusAmount: number;
+  supplementalTaxWithheld: number;
+  netBonusTakeHome: number;
+  notes: string;
+}
+
+export interface CommissionCalculationResult {
+  contractValue: number;
+  directCosts: number;
+  grossMarginAmount: number;
+  grossMarginPercent: number;
+  tierApplied: string;
+  commissionRate: number; // e.g. 0.04 for 4%
+  totalCommissionPool: number;
+  estimatorSharePercent: number;
+  estimatorCommission: number;
+  collectionStatus: 'Accrued (Pending Collection)' | 'Payable (Cash Collected)' | 'Disbursed';
+  clawbackWindowDaysRemaining?: number;
+  notes: string;
+}
+
+export interface BonusCalculationResult {
+  bonusType: 'turnaround_speed' | 'ebitda_profit_sharing' | 'discretionary_spot';
+  baseAmount: number;
+  performanceMultiplier: number;
+  prorationFactor: number;
+  finalBonusAmount: number;
+  supplementalTaxRate: number; // 0.22 flat IRS rate
+  supplementalTaxWithheld: number;
+  netBonus: number;
+  criteriaMet: string;
+}
+
+export interface TaxWithholdingResult {
+  grossWages: number;
+  regularWages: number;
+  supplementalWages: number; // commissions + bonuses
+  preTax401k: number;
+  preTaxHealth: number;
+  taxableWagesFit: number;
+  federalIncomeTax: number;
+  supplementalFederalTax: number;
+  totalFederalIncomeTax: number;
+  stateIncomeTax: number; // 4.95% IL
+  socialSecurityTax: number; // 6.2% up to $168,600
+  socialSecurityEmployerMatch: number;
+  medicareTax: number; // 1.45%
+  medicareEmployerMatch: number;
+  additionalMedicareTax: number; // 0.9% > $200k
+  totalFicaEmployee: number;
+  totalFicaEmployer: number;
+  employerSafeHarborMatch401k: number; // Up to 4%
+  totalEmployeeTaxes: number;
+  disposableEarnings: number;
+  ccpaMaxLoanDeductionAllowed: number; // 25% of disposable
+}
+
+export interface StripeFeeResult {
+  invoiceAmount: number;
+  paymentMethod: 'credit_card' | 'ach_debit' | 'wire_transfer';
+  feePolicy: 'absorb_by_company' | 'surcharge_to_client';
+  percentageFeeRate: number;
+  fixedFee: number;
+  grossAmountCharged: number;
+  stripeFeeDeduction: number;
+  netCashDeposited: number;
+  effectiveFeePercent: number;
+  glJournalEntries: Array<{
+    account: string;
+    description: string;
+    debit: number;
+    credit: number;
+  }>;
 }
 
 export interface PartnerItem {

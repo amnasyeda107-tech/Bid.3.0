@@ -42,3 +42,38 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #2d3449;
 }
+
+/* Print Styles for Loan Payment Receipts & Document Generation */
+@media print {
+  body {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+  }
+
+  /* Hide app framework, toolbars, sidebars, modal backdrops */
+  .no-print,
+  nav,
+  aside,
+  header,
+  footer {
+    display: none !important;
+  }
+
+  /* Target loan payment receipt modal when printing */
+  #printable-loan-receipt {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 24px !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    page-break-inside: avoid;
+  }
+}
+
